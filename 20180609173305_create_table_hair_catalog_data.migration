@@ -1,12 +1,12 @@
 #-*- coding:utf-8 -*-
 SQL_UP = u"""
-CREATE TABLE crawl_photo_data (
+CREATE TABLE crawl_tweets_img_data (
   id int(11) NOT NULL auto_increment,
-  ref_url varchar(255) default NULL,
-  search_word varchar(255) default NULL,
-  caption text default NULL,
-  photo_url text default NULL,
-  photo_data binary default NULL,
+  user_id varchar(255) default NULL,
+  user_tweet text default NULL,
+  tweet_ref_url text default NULL,
+  img_url text default NULL,
+  img_data binary default NULL,
   PRIMARY KEY  (id)
 );
 """
