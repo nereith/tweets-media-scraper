@@ -34,7 +34,7 @@ def crawling(url, screen_name, cnx, cur, amount, flag=True):
 	last_tweet_id = last_tweet.attrs['data-conversation-id']
 	return last_tweet_id
 
-def crawling_search(url, cnx, cur, amount, flag=True):
+def crawling_search(url, search_word, cnx, cur, amount, flag=True):
 	headers = {
 	'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:60.0) Gecko/20100101 Firefox/60.0',
 }
@@ -55,10 +55,15 @@ def crawling_search(url, cnx, cur, amount, flag=True):
 	for link in links:
 		image_url = link.attrs['data-url']
 		screen_name = link.attrs['data-screen-name']
+		user_id = link.attrs['data-user-id']
+		status_id = link.attrs['data-status-id']
+		tweet_ref_url = "https://twitter.com" + link.attrs['data-permalink-path']
+
 		print(image_url)
+		print(tweet_ref_url)
 		try:
-			sql = 'INSERT INTO crawl_search_tweets_img_data(user_id, img_url) VALUES (%s, %s)'
-			cur.execute(sql, (screen_name,image_url))
+			sql = 'INSERT INTO crawl_search_tweets_img_data(search_word, screen_name, user_id, tweet_ref_url, img_url) VALUES (%s, %s, %s, %s, %s)'
+			cur.execute(sql, (search_word, screen_name, user_id, tweet_ref_url, image_url))
 			cnx.commit()
 		except:
 			cnx.rollback()
@@ -121,10 +126,10 @@ def search(ctx, language, search_word, amount):
 	for i in range(1, amount + 1):
 		if i == 1:
 			url = 'https://twitter.com/search?f=images&q={search_word}&qf=off&lang=ja'.format(search_word=search_word)
-			last_tweet_id = crawling_search(url, cnx, cur, amount)
+			last_tweet_id = crawling_search(url, search_word, cnx, cur, amount)
 		else:
-			url = "https://twitter.com/i/search/timeline?f=images&vertical=default&q=aaaa&include_available_features=1&include_entities=1&lang=ja&max_position=TWEET--{last_tweet_id}--T-0-0&reset_error_state=false".format(screen_name=screen_name, last_tweet_id=last_tweet_id)
-			last_tweet_id = crawling_search(url, cnx, cur, amount, False)
+			url = "https://twitter.com/i/search/timeline?f=images&vertical=default&q={search_word}&qf=off&include_available_features=1&include_entities=1&lang=ja&max_position=TWEET--{last_tweet_id}--T-0-0&reset_error_state=false".format(search_word=search_word, last_tweet_id=last_tweet_id)
+			last_tweet_id = crawling_search(url, search_word, cnx, cur, amount, False)
 
 	cur.close()
 	cnx.close()

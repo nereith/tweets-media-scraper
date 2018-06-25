@@ -18,6 +18,7 @@ CREATE TABLE crawl_tweets_img_data (
 CREATE TABLE crawl_search_tweets_img_data (
   id int(11) NOT NULL auto_increment,
   search_word text default NULL,
+  screen_name varchar(255) default NULL,
   user_id varchar(255) default NULL,
   user_tweet text default NULL,
   tweet_ref_url text default NULL,
