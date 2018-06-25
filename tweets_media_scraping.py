@@ -7,6 +7,7 @@ import re
 import mysql.connector
 import configparser
 import io
+import os
 from bs4 import BeautifulSoup
 
 class ConfigParser(configparser.RawConfigParser):
@@ -35,9 +36,11 @@ def crawling(url, screen_name, cnx, cur, amount, flag=True):
 	for link in links:
 		url = link.attrs['data-image-url']
 		print(url)
+		orig_size_url = url + ":orig"
+		image_data = requests.get(orig_size_url).content
 		try:
-			sql = 'INSERT INTO crawl_tweets_img_data(user_id, img_url) VALUES (%s, %s)'
-			cur.execute(sql, (screen_name,url))
+			sql = 'INSERT INTO crawl_tweets_img_data(user_id, img_url, img_data) VALUES (%s, %s)'
+			cur.execute(sql, (screen_name,url,image_data))
 			cnx.commit()
 		except:
 			cnx.rollback()
@@ -45,6 +48,7 @@ def crawling(url, screen_name, cnx, cur, amount, flag=True):
 
 	last_tweet_id = last_tweet.attrs['data-conversation-id']
 	return last_tweet_id
+
 
 def crawling_search(url, search_word, cnx, cur, amount, flag=True):
 	headers = {
@@ -70,12 +74,20 @@ def crawling_search(url, search_word, cnx, cur, amount, flag=True):
 		user_id = link.attrs['data-user-id']
 		status_id = link.attrs['data-status-id']
 		tweet_ref_url = "https://twitter.com" + link.attrs['data-permalink-path']
-
+		orig_size_url = image_url + ":orig"
+		image_data = requests.get(orig_size_url).content
+		"""
+		filename = image_url.replace('https://pbs.twimg.com/media/','')
+		print(filename)
+		fullpath = os.path.join("./scraping/", filename)
 		print(image_url)
 		print(tweet_ref_url)
+		with open(fullpath, "wb") as fout:
+			fout.write(image_data)
+		"""
 		try:
-			sql = 'INSERT INTO crawl_search_tweets_img_data(search_word, screen_name, user_id, tweet_ref_url, img_url) VALUES (%s, %s, %s, %s, %s)'
-			cur.execute(sql, (search_word, screen_name, user_id, tweet_ref_url, image_url))
+			sql = 'INSERT INTO crawl_search_tweets_img_data(search_word, screen_name, user_id, tweet_ref_url, img_url, img_data) VALUES (%s, %s, %s, %s, %s, %s)'
+			cur.execute(sql, (search_word, screen_name, user_id, tweet_ref_url, image_url, image_data))
 			cnx.commit()
 		except:
 			cnx.rollback()
@@ -83,6 +95,7 @@ def crawling_search(url, search_word, cnx, cur, amount, flag=True):
 
 	last_tweet_id = last_tweet.attrs['data-status-id']
 	return last_tweet_id
+
 
 @click.group()
 @click.option('--host', '-h', default=config.get('settings','database_host'))
@@ -112,7 +125,6 @@ def cmd(ctx, host, user, password, database, port):
 @click.option('--amount', '-a', default=1)
 @click.pass_context
 def user(ctx, screen_name, amount):
-
 	cur = ctx.obj['CUR']
 	cnx = ctx.obj['CNX']
 
@@ -133,10 +145,8 @@ def user(ctx, screen_name, amount):
 @click.option('--amount', '-a', default=1)
 @click.pass_context
 def search(ctx, language, search_word, amount):
-
 	cur = ctx.obj['CUR']
 	cnx = ctx.obj['CNX']
-
 	for i in range(1, amount + 1):
 		if i == 1:
 			url = 'https://twitter.com/search?f=images&q={search_word}&qf=off&lang=ja'.format(search_word=search_word)
