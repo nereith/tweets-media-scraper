@@ -35,11 +35,14 @@ def crawling(url, screen_name, cnx, cur, amount, flag=True):
 	return last_tweet_id
 
 def crawling_search(url, cnx, cur, amount, flag=True):
+	headers = {
+	'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:60.0) Gecko/20100101 Firefox/60.0',
+}
 	if flag:
-		html = requests.get(url).text
+		html = requests.get(url,headers=headers).text
 		print(url)
 	else:
-		json = requests.get(url).json()
+		json = requests.get(url,headers=headers).json()
 		html = json["items_html"]
 	try:
 		soup = BeautifulSoup(html, "lxml")
@@ -47,8 +50,8 @@ def crawling_search(url, cnx, cur, amount, flag=True):
 		soup = BeautifulSoup(html, "html5lib")
 
 	links = soup.find_all("span", {"class" : "AdaptiveStreamGridImage"})
-	print(links)
-	# last_tweet = links[-1]
+
+	last_tweet = links[-1]
 	for link in links:
 		image_url = link.attrs['data-url']
 		screen_name = link.attrs['data-screen-name']
