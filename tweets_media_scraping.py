@@ -55,17 +55,17 @@ def crawling_search(url, cnx, cur, amount, flag=True):
 	for link in links:
 		image_url = link.attrs['data-url']
 		screen_name = link.attrs['data-screen-name']
-		print(url)
+		print(image_url)
 		try:
-			sql = 'INSERT INTO crawl_tweets_img_data(user_id, img_url) VALUES (%s, %s)'
-			cur.execute(sql, (screen_name,url))
+			sql = 'INSERT INTO crawl_search_tweets_img_data(user_id, img_url) VALUES (%s, %s)'
+			cur.execute(sql, (screen_name,image_url))
 			cnx.commit()
 		except:
 			cnx.rollback()
 			raise
 
-	#last_tweet_id = last_tweet.attrs['data-status-id']
-	#return last_tweet_id
+	last_tweet_id = last_tweet.attrs['data-status-id']
+	return last_tweet_id
 
 @click.group()
 @click.option('--host', '-h', default='127.0.0.1')

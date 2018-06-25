@@ -34,5 +34,6 @@ CREATE TABLE crawl_search_tweets_img_data (
 """
 
 SQL_DOWN = u"""
-DROP TABLE crawl_photo_data;
+DROP TABLE crawl_tweets_img_data;
+DROP TABLE crawl_search_tweets_img_data;
 """
