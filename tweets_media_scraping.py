@@ -5,7 +5,19 @@ import click
 import requests
 import re
 import mysql.connector
+import configparser
+import io
 from bs4 import BeautifulSoup
+
+class ConfigParser(configparser.RawConfigParser):
+	def get(self, section, option):
+		val = configparser.RawConfigParser.get(self, section, option)
+		return val.strip('"')
+
+conf_str = '[settings]\n' + open('simple-db-migrate.conf', 'r').read()
+conf_fp = io.StringIO(conf_str)
+config = ConfigParser()
+config.readfp(conf_fp)
 
 def crawling(url, screen_name, cnx, cur, amount, flag=True):
 	if flag:
@@ -73,15 +85,17 @@ def crawling_search(url, search_word, cnx, cur, amount, flag=True):
 	return last_tweet_id
 
 @click.group()
-@click.option('--host', '-h', default='127.0.0.1')
-@click.option('--user', '-u', default='username')
-@click.option('--password', '-p', default='password')
-@click.option('--database', '-d', default='database_name')
+@click.option('--host', '-h', default=config.get('settings','database_host'))
+@click.option('--user', '-u', default=config.get('settings','database_user'))
+@click.option('--password', '-p', default=config.get('settings','database_password'))
+@click.option('--database', '-d', default=config.get('settings','database_name'))
+@click.option('--port', '-P', default=config.get('settings','database_port'))
 @click.pass_context
-def cmd(ctx, host, user, password, database):
+def cmd(ctx, host, user, password, database, port):
 	cnx = mysql.connector.connect(user=user, password=password,
 							  host=host,
 							  database=database,
+							  port=port,
 							  charset='utf8')
 	cur = cnx.cursor()
 	if cnx.is_connected():
