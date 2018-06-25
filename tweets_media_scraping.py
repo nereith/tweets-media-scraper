@@ -34,15 +34,43 @@ def crawling(url, screen_name, cnx, cur, amount, flag=True):
 	last_tweet_id = last_tweet.attrs['data-conversation-id']
 	return last_tweet_id
 
-@click.command()
+def crawling_search(url, cnx, cur, amount, flag=True):
+	if flag:
+		html = requests.get(url).text
+		print(url)
+	else:
+		json = requests.get(url).json()
+		html = json["items_html"]
+	try:
+		soup = BeautifulSoup(html, "lxml")
+	except:
+		soup = BeautifulSoup(html, "html5lib")
+
+	links = soup.find_all("span", {"class" : "AdaptiveStreamGridImage"})
+	print(links)
+	# last_tweet = links[-1]
+	for link in links:
+		image_url = link.attrs['data-url']
+		screen_name = link.attrs['data-screen-name']
+		print(url)
+		try:
+			sql = 'INSERT INTO crawl_tweets_img_data(user_id, img_url) VALUES (%s, %s)'
+			cur.execute(sql, (screen_name,url))
+			cnx.commit()
+		except:
+			cnx.rollback()
+			raise
+
+	#last_tweet_id = last_tweet.attrs['data-status-id']
+	#return last_tweet_id
+
+@click.group()
 @click.option('--host', '-h', default='127.0.0.1')
 @click.option('--user', '-u', default='username')
 @click.option('--password', '-p', default='password')
 @click.option('--database', '-d', default='database_name')
-@click.option('--amount', '-a', default=1)
-@click.option('--screen-name', '-s', default="twitter")
-def cmd(host, user, password, database, amount, screen_name):
-
+@click.pass_context
+def cmd(ctx, host, user, password, database):
 	cnx = mysql.connector.connect(user=user, password=password,
 							  host=host,
 							  database=database,
@@ -53,6 +81,19 @@ def cmd(host, user, password, database, amount, screen_name):
 	else:
 		print('couldnot connect')
 		exit()
+	ctx.obj['CNX'] = cnx
+	ctx.obj['CUR'] = cur
+
+
+@cmd.command()
+@click.argument('screen_name')
+@click.option('--amount', '-a', default=1)
+@click.pass_context
+def user(ctx, screen_name, amount):
+
+	cur = ctx.obj['CUR']
+	cnx = ctx.obj['CNX']
+
 	for i in range(1, amount + 1):
 		if i == 1:
 			url = 'https://twitter.com/{screen_name}/media'.format(screen_name=screen_name)
@@ -64,8 +105,30 @@ def cmd(host, user, password, database, amount, screen_name):
 	cur.close()
 	cnx.close()
 
+@cmd.command()
+@click.option('--language', '-l', default=None)
+@click.argument('search_word')
+@click.option('--amount', '-a', default=1)
+@click.pass_context
+def search(ctx, language, search_word, amount):
+
+	cur = ctx.obj['CUR']
+	cnx = ctx.obj['CNX']
+
+	for i in range(1, amount + 1):
+		if i == 1:
+			url = 'https://twitter.com/search?f=images&q={search_word}&qf=off&lang=ja'.format(search_word=search_word)
+			last_tweet_id = crawling_search(url, cnx, cur, amount)
+		else:
+			url = "https://twitter.com/i/search/timeline?f=images&vertical=default&q=aaaa&include_available_features=1&include_entities=1&lang=ja&max_position=TWEET--{last_tweet_id}--T-0-0&reset_error_state=false".format(screen_name=screen_name, last_tweet_id=last_tweet_id)
+			last_tweet_id = crawling_search(url, cnx, cur, amount, False)
+
+	cur.close()
+	cnx.close()
+
+
 def main():
-	cmd()
+	cmd(obj={})
 
 
 if __name__ == '__main__':
