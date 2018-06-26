@@ -2,6 +2,7 @@
 SQL_UP = u"""
 CREATE TABLE crawl_tweets_img_data (
   id int(11) NOT NULL auto_increment,
+  screen_name varchar(255) default NULL,
   user_id varchar(255) default NULL,
   user_tweet text default NULL,
   tweet_ref_url text default NULL,

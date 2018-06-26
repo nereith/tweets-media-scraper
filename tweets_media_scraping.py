@@ -20,7 +20,7 @@ conf_fp = io.StringIO(conf_str)
 config = ConfigParser()
 config.readfp(conf_fp)
 
-def crawling(url, screen_name, cnx, cur, amount, flag=True):
+def crawling(url, screen_name, opt, amount, flag=True):
 	if flag:
 		html = requests.get(url).text
 		print(url)
@@ -34,23 +34,40 @@ def crawling(url, screen_name, cnx, cur, amount, flag=True):
 	links = soup.find_all("div", class_="AdaptiveMedia-photoContainer js-adaptive-photo ")
 	last_tweet = soup.find_all("a", class_="tweet-timestamp js-permalink js-nav js-tooltip")[-1]
 	for link in links:
-		url = link.attrs['data-image-url']
+		image_url = link.attrs['data-image-url']
 		print(url)
-		orig_size_url = url + ":orig"
+		orig_size_url = image_url + ":orig"
 		image_data = requests.get(orig_size_url).content
-		try:
-			sql = 'INSERT INTO crawl_tweets_img_data(user_id, img_url, img_data) VALUES (%s, %s)'
-			cur.execute(sql, (screen_name,url,image_data))
-			cnx.commit()
-		except:
-			cnx.rollback()
+		if opt[2] == 'save':
+			if opt[1]:
+				filename = opt[1]
+			else:
+				filename = image_url.replace('https://pbs.twimg.com/media/','')
+			fullpath = os.path.join(opt[0], filename)
+			print(fullpath)
+			print(image_url)
+			with open(fullpath, "wb") as fout:
+				fout.write(image_data)
+		elif opt[2] == 'store':
+			print(image_url)
+			cnx = opt[0]
+			cur = opt[1]
+			try:
+				sql = 'INSERT INTO crawl_tweets_img_data(screen_name, img_url, img_data) VALUES (%s, %s, %s)'
+				cur.execute(sql, (screen_name,image_url,image_data))
+				cnx.commit()
+			except:
+				cnx.rollback()
+				raise
+		else:
+			print("something wrong")
 			raise
 
 	last_tweet_id = last_tweet.attrs['data-conversation-id']
 	return last_tweet_id
 
 
-def crawling_search(url, search_word, cnx, cur, amount, flag=True):
+def crawling_search(url, search_word, opt, amount, flag=True):
 	headers = {
 	'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:60.0) Gecko/20100101 Firefox/60.0',
 }
@@ -76,35 +93,38 @@ def crawling_search(url, search_word, cnx, cur, amount, flag=True):
 		tweet_ref_url = "https://twitter.com" + link.attrs['data-permalink-path']
 		orig_size_url = image_url + ":orig"
 		image_data = requests.get(orig_size_url).content
-		"""
-		filename = image_url.replace('https://pbs.twimg.com/media/','')
-		print(filename)
-		fullpath = os.path.join("./scraping/", filename)
-		print(image_url)
-		print(tweet_ref_url)
-		with open(fullpath, "wb") as fout:
-			fout.write(image_data)
-		"""
-		try:
-			sql = 'INSERT INTO crawl_search_tweets_img_data(search_word, screen_name, user_id, tweet_ref_url, img_url, img_data) VALUES (%s, %s, %s, %s, %s, %s)'
-			cur.execute(sql, (search_word, screen_name, user_id, tweet_ref_url, image_url, image_data))
-			cnx.commit()
-		except:
-			cnx.rollback()
+
+		if opt[2] == 'save':
+			if opt[1]:
+				filename = opt[1]
+			else:
+				filename = image_url.replace('https://pbs.twimg.com/media/','')
+			fullpath = os.path.join(opt[0], filename)
+			print(fullpath)
+			print(image_url)
+			print(tweet_ref_url)
+			with open(fullpath, "wb") as fout:
+				fout.write(image_data)
+		elif opt[2] == 'store':
+			print(image_url)
+			print(tweet_ref_url)
+			cnx = opt[0]
+			cur = opt[1]
+			try:
+				sql = 'INSERT INTO crawl_search_tweets_img_data(search_word, screen_name, user_id, tweet_ref_url, img_url, img_data) VALUES (%s, %s, %s, %s, %s, %s)'
+				cur.execute(sql, (search_word, screen_name, user_id, tweet_ref_url, image_url, image_data))
+				cnx.commit()
+			except:
+				cnx.rollback()
+				raise
+		else:
+			print("something wrong")
 			raise
 
 	last_tweet_id = last_tweet.attrs['data-status-id']
 	return last_tweet_id
 
-
-@click.group()
-@click.option('--host', '-h', default=config.get('settings','database_host'))
-@click.option('--user', '-u', default=config.get('settings','database_user'))
-@click.option('--password', '-p', default=config.get('settings','database_password'))
-@click.option('--database', '-d', default=config.get('settings','database_name'))
-@click.option('--port', '-P', default=config.get('settings','database_port'))
-@click.pass_context
-def cmd(ctx, host, user, password, database, port):
+def store(host, user, password, database, port):
 	cnx = mysql.connector.connect(user=user, password=password,
 							  host=host,
 							  database=database,
@@ -114,10 +134,43 @@ def cmd(ctx, host, user, password, database, port):
 	if cnx.is_connected():
 		print('connected')
 	else:
-		print('couldnot connect')
+		print('couldnot connect db')
 		exit()
-	ctx.obj['CNX'] = cnx
-	ctx.obj['CUR'] = cur
+	ret = [cnx, cur, "store"]
+	return ret
+
+
+def save(path, filename):
+	ret = [path, filename, "save"]
+	return ret
+
+def exists(path):
+	path = os.path.expanduser(path)
+	existence = os.path.isdir(path)
+	if existence:
+		return path
+	else:
+		print("doesn't exists")
+		exit()
+
+@click.group(invoke_without_command=True)
+@click.option('--host', '-h', default=config.get('settings','database_host'))
+@click.option('--user', '-u', default=config.get('settings','database_user'))
+@click.option('--password', '-p', default=config.get('settings','database_password'))
+@click.option('--database', '-d', default=config.get('settings','database_name'))
+@click.option('--port', '-P', default=config.get('settings','database_port'))
+@click.option('--path', type=click.Path())
+@click.option('--filename','-n')
+@click.argument('cmd1', type=click.Choice(['store', 'save']))
+@click.pass_context
+def cmd(ctx, host, user, password, database, port, path, filename, cmd1):
+	if cmd1 == 'store':
+		ret = store(host, user, password, database, port)
+	elif cmd1 == 'save':
+		path = exists(path)
+		ret = save(path, filename)
+	ctx.obj['opt'] = ret
+
 
 
 @cmd.command()
@@ -125,19 +178,21 @@ def cmd(ctx, host, user, password, database, port):
 @click.option('--amount', '-a', default=1)
 @click.pass_context
 def user(ctx, screen_name, amount):
-	cur = ctx.obj['CUR']
-	cnx = ctx.obj['CNX']
+
+	opt = ctx.obj['opt']
 
 	for i in range(1, amount + 1):
 		if i == 1:
 			url = 'https://twitter.com/{screen_name}/media'.format(screen_name=screen_name)
-			last_tweet_id = crawling(url, screen_name, cnx, cur, amount)
+			last_tweet_id = crawling(url, screen_name, opt, amount)
 		else:
 			url = "https://twitter.com/i/profiles/show/{screen_name}/media_timeline?include_available_features=1&include_entities=1&max_position={last_tweet_id}&oldest_unread_id=0&reset_error_state=false".format(screen_name=screen_name, last_tweet_id=last_tweet_id)
-			last_tweet_id = crawling(url, screen_name, cnx, cur, amount, False)
+			last_tweet_id = crawling(url, screen_name, opt, amount, False)
 
-	cur.close()
-	cnx.close()
+	if opt[2] == 'store':
+		opt[1].close()
+		opt[0].close()
+	exit()
 
 @cmd.command()
 @click.option('--language', '-l', default=None)
@@ -145,19 +200,21 @@ def user(ctx, screen_name, amount):
 @click.option('--amount', '-a', default=1)
 @click.pass_context
 def search(ctx, language, search_word, amount):
-	cur = ctx.obj['CUR']
-	cnx = ctx.obj['CNX']
+
+	opt = ctx.obj['opt']
+
 	for i in range(1, amount + 1):
 		if i == 1:
 			url = 'https://twitter.com/search?f=images&q={search_word}&qf=off&lang=ja'.format(search_word=search_word)
-			last_tweet_id = crawling_search(url, search_word, cnx, cur, amount)
+			last_tweet_id = crawling_search(url, search_word, opt, amount)
 		else:
 			url = "https://twitter.com/i/search/timeline?f=images&vertical=default&q={search_word}&qf=off&include_available_features=1&include_entities=1&lang=ja&max_position=TWEET--{last_tweet_id}--T-0-0&reset_error_state=false".format(search_word=search_word, last_tweet_id=last_tweet_id)
-			last_tweet_id = crawling_search(url, search_word, cnx, cur, amount, False)
+			last_tweet_id = crawling_search(url, search_word, opt, amount, False)
 
-	cur.close()
-	cnx.close()
-
+	if opt[2] == 'store':
+		opt[1].close()
+		opt[0].close()
+	exit()
 
 def main():
 	cmd(obj={})
