@@ -1,0 +1,41 @@
+#-*- coding:utf-8 -*-
+SQL_UP = u"""
+CREATE TABLE crawl_tweets_img_data (
+  id int(11) NOT NULL auto_increment,
+  screen_name varchar(255) default NULL,
+  user_id varchar(255) default NULL,
+  user_tweet text default NULL,
+  tweet_ref_url text default NULL,
+  img_url text default NULL,
+  img_data binary default NULL,
+  created_at timestamp not null default current_timestamp,
+  created_by varchar(255) default NULL,
+  updated_at timestamp not null default current_timestamp on update current_timestamp,
+  updated_by varchar(255) default NULL,
+  deleted_at timestamp NULL DEFAULT NULL,
+  deleted_by varchar(255) default NULL,
+  PRIMARY KEY  (id)
+);
+CREATE TABLE crawl_search_tweets_img_data (
+  id int(11) NOT NULL auto_increment,
+  search_word text default NULL,
+  screen_name varchar(255) default NULL,
+  user_id varchar(255) default NULL,
+  user_tweet text default NULL,
+  tweet_ref_url text default NULL,
+  img_url text default NULL,
+  img_data binary default NULL,
+  created_at timestamp not null default current_timestamp,
+  created_by varchar(255) default NULL,
+  updated_at timestamp not null default current_timestamp on update current_timestamp,
+  updated_by varchar(255) default NULL,
+  deleted_at timestamp NULL DEFAULT NULL,
+  deleted_by varchar(255) default NULL,
+  PRIMARY KEY  (id)
+);
+"""
+
+SQL_DOWN = u"""
+DROP TABLE crawl_tweets_img_data;
+DROP TABLE crawl_search_tweets_img_data;
+"""
